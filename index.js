@@ -54,6 +54,7 @@ io.on("connection", (socket) => {
     users[socket.id] = map;
     io.emit("usersList", Object.values(users));
     broadcastUpdatedRoomList();
+    broadcastUpdatedQuizList();
   });
 
   // Create room with name/description, generate unique roomId
@@ -296,7 +297,6 @@ io.on("connection", (socket) => {
 
     io.emit("leaderboardUpdated", { quizId, leaderboard });
   });
-
 
   // end test
   socket.on("endTest", ({ quizId }) => {
