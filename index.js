@@ -49,6 +49,7 @@ io.on("connection", (socket) => {
   socket.on("registerUser", (userData) => {
     const map = {
       ...userData,
+      socketId: socket.id,
       date: new Date().toISOString(),
     }
     users[socket.id] = map;
