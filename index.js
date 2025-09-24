@@ -9,7 +9,7 @@ const io = require("socket.io")(server, {
     origin: "*",
     methods: ["GET", "POST"],
   },
-  transports: ["websocket", "polling"],
+  // transports: ["websocket", "polling"],
 });
 
 // Map to store users: socketId -> { uid, displayName }
@@ -48,6 +48,11 @@ io.on("connection", (socket) => {
     if (candidate) {
       io.to(to).emit("ice-candidate", { candidate });
     }
+  });
+
+  // --- Reject Call ---
+  socket.on("reject-call", ({ to }) => {
+    io.to(to).emit("call-rejected");
   });
 
   // --- End Call ---
