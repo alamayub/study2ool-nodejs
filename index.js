@@ -15,10 +15,10 @@ const io = require("socket.io")(server, {
 
 // Map to store users: socketId -> { uid, displayName }
 const users = new Map();
-const classes = new Map();
+const rooms = new Map();
 
-function sendLatestClassesList() {
-  const enrichedClasses = Array.from(classes.values()).map((cls) => ({
+function sendLatestRoomsList() {
+  const enrichedrooms = Array.from(rooms.values()).map((cls) => ({
     ...cls,
     host: users.get(cls.host) || { uid: cls.host, displayName: "Unknown" },
     users: cls.users.map(
@@ -26,7 +26,7 @@ function sendLatestClassesList() {
     ),
   }));
 
-  io.emit("classes-list", enrichedClasses);
+  io.emit("rooms-list", enrichedrooms);
 }
 
 io.on("connection", (socket) => {
@@ -74,8 +74,8 @@ io.on("connection", (socket) => {
     io.to(to).emit("call-ended");
   });
 
-  // --- create class ---
-  socket.on("create-class", ({ name, description }) => {
+  // --- create room ---
+  socket.on("create-room", ({ name, description }) => {
     const id = uuidv4();
     const now = new Date().toISOString();
     const host = socket.id; 
@@ -92,16 +92,16 @@ io.on("connection", (socket) => {
       users: [host], 
     };
 
-    classes.set(id, map);
+    rooms.set(id, map);
     socket.join(id);
-    sendLatestClassesList();
+    sendLatestRoomsList();
   })
 
-  // --- Join class ---
-  socket.on("join-class", ({ classId }) => {
-    const cls = classes.get(classId);
+  // --- Join room ---
+  socket.on("join-room", ({ roomId }) => {
+    const cls = rooms.get(roomId);
     if (!cls) {
-      socket.emit("error", { message: "Class not found" });
+      socket.emit("error", { message: "room not found" });
       return;
     }
 
@@ -110,30 +110,30 @@ io.on("connection", (socket) => {
       cls.lastModified = new Date().toISOString();
     }
 
-    classes.set(classId, cls);
-    socket.join(classId);
-    socket.emit('all-message', { classId, messages: classes.get(classId).messages });
-    emitClassesList();
+    rooms.set(roomId, cls);
+    socket.join(roomId);
+    socket.emit('all-message', { roomId, messages: rooms.get(roomId).messages });
+    emitroomsList();
   });
 
-  // --- Leave class ---
-  socket.on("leave-class", ({ classId }) => {
-    const cls = classes.get(classId);
+  // --- Leave room ---
+  socket.on("leave-room", ({ roomId }) => {
+    const cls = rooms.get(roomId);
     if (!cls) return;
 
     cls.users = cls.users.filter((u) => u !== socket.id);
     cls.lastModified = new Date().toISOString();
 
-    classes.set(classId, cls);
-    socket.leave(classId);
-    emitClassesList();
+    rooms.set(roomId, cls);
+    socket.leave(roomId);
+    emitroomsList();
   });
 
   // --- send message ---
-  socket.on("send-message", ({ classId, message }) => {
-    const cls = classes.get(classId);
+  socket.on("send-message", ({ roomId, message }) => {
+    const cls = rooms.get(roomId);
     if (!cls) {
-      socket.emit("error", { message: "Class not found" });
+      socket.emit("error", { message: "room not found" });
       return;
     }
 
@@ -149,10 +149,10 @@ io.on("connection", (socket) => {
     cls.lastMessage = msg;
     cls.lastModified = now;
 
-    classes.set(classId, cls);
+    rooms.set(roomId, cls);
 
     // Broadcast to all sockets in the room
-    io.to(classId).emit("new-message", { classId, message: msg });
+    io.to(roomId).emit("new-message", { roomId, message: msg });
   });
 
   // --- Disconnect ---
@@ -163,6 +163,12 @@ io.on("connection", (socket) => {
       "usersList",
       [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
     );
+    const room = rooms.values().find((r) => r.host === socket.id);
+    if (room) {
+      rooms.delete(socket.id);
+      socket.leave(room.id);
+      sendLatestRoomsList();
+    }
   });
 });
 
