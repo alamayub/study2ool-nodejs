@@ -38,7 +38,7 @@ io.on("connection", (socket) => {
     console.log("Registered users:", [...users.values()]);
     // Broadcast updated users to all clients
     io.emit(
-      "usersList",
+      "users-list",
       [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
     );
   });
@@ -112,6 +112,9 @@ io.on("connection", (socket) => {
 
     rooms.set(roomId, cls);
     socket.join(roomId);
+    const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
+    const message = `${user.displayName} has joined the room!` ;
+    io.to(roomId).emit("user-joined", { user: user, roomId, message });
     socket.emit('all-message', { roomId, messages: rooms.get(roomId).messages });
     emitroomsList();
   });
@@ -126,6 +129,23 @@ io.on("connection", (socket) => {
 
     rooms.set(roomId, cls);
     socket.leave(roomId);
+    const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
+    const message = `${user.displayName} has joined the room!` ;
+    o.to(roomId).emit("user-left", { user: user, roomId, message });
+    emitroomsList();
+  });
+
+  // --- Leave room ---
+  socket.on("close-room", ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if(!room) return;
+    if(room.host !== socket.id) {
+      socket.emit("error", { message: "only host can close the room!" });
+      return;
+    }
+    socket.leave(roomId);
+    rooms.delete(roomId);
+    socket.emit("room-closed", { message: "room closed by the owner!" });
     emitroomsList();
   });
 
@@ -160,13 +180,14 @@ io.on("connection", (socket) => {
     console.log(`User disconnected: ${socket.id}`);
     users.delete(socket.id);
     io.emit(
-      "usersList",
+      "users-list",
       [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
     );
     const room = rooms.values().find((r) => r.host === socket.id);
     if (room) {
-      rooms.delete(socket.id);
+      rooms.delete(room.id);
       socket.leave(room.id);
+      socket.emit("room-diconnected", { message: "room disconnected by the owner!" });
       sendLatestRoomsList();
     }
   });
