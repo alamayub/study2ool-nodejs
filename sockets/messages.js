@@ -24,6 +24,13 @@ export default function messageHandlers(io, socket, users, rooms) {
 
   // ---------------------- FILE START ----------------------
   socket.on("file-start", ({ roomId, fileId, fileName, fileSize, fileType }) => {
+    if(!roomId) return socket.emit("error", { message: "roomId is required for file transfer" });
+
+    const cls = rooms.get(roomId);
+    if (!cls) return socket.emit("error", { message: "room not found" });
+    
+    if (activeTransfers.has(fileId)) return socket.emit("error", { message: "file transfer already in progress" });
+
     const now = new Date().toISOString();
     const sender = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
     const extension = fileName.split(".").pop().toLowerCase();
@@ -41,32 +48,26 @@ export default function messageHandlers(io, socket, users, rooms) {
     };
 
     activeTransfers.set(fileId, transfer);
-
-    // Construct a "file message" and save to room if room
-    if (roomId) {
-      const cls = rooms.get(roomId);
-      if (cls) {
-        const msg = {
-          id: fileId,
-          type: "file",
-          sender,
-          fileName,
-          fileSize,
-          fileType,
-          extension,
-          timestamp: now,
-          status: "uploading",
-          downloadUrl: null, 
-        };
-        cls.messages.push(msg);
-        cls.lastMessage = msg;
-        cls.lastModified = now;
-        rooms.set(roomId, cls);
-      }
-    }
-
+    
+    const msg = {
+      id: fileId,
+      type: "file",
+      sender,
+      fileName,
+      fileSize,
+      fileType,
+      extension,
+      timestamp: now,
+      status: "uploading",
+      downloadUrl: null, 
+    };
+    cls.messages.push(msg);
+    cls.lastMessage = msg;
+    cls.lastModified = now;
+    rooms.set(roomId, cls);
+    
     // Broadcast start event
-    if (roomId) io.to(roomId).emit("file-start", transfer);
+    io.to(roomId).emit("file-start", transfer);
   });
 
   // ---------------------- FILE CHUNKS ----------------------

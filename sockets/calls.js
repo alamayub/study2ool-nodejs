@@ -1,6 +1,6 @@
 export default function callHandlers(io, socket, users) {
   // --- Call Offer ---
-  socket.on("call-user", ({ to, offer, from }) => {
+  socket.on("init-call", ({ to, offer, from }) => {
     const user = users.get(from);
     io.to(to).emit("incoming-call", { from: { ...user, socketId: from }, offer });
   });
