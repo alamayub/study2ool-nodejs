@@ -32,6 +32,13 @@ function sendLatestRoomsList() {
   io.emit("rooms-list", enrichedrooms);
 }
 
+function updateUsersList() {
+  io.emit(
+    "users-list",
+    [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
+  );
+}
+
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
@@ -40,10 +47,7 @@ io.on("connection", (socket) => {
     const photoURL = generateAvatarURL(uid);
     users.set(socket.id, { uid, photoURL, displayName });
     // Broadcast updated users to all clients
-    io.emit(
-      "users-list",
-      [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
-    );
+    updateUsersList();
     sendLatestRoomsList();
   });
 
@@ -194,10 +198,7 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
     users.delete(socket.id);
-    io.emit(
-      "users-list",
-      [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
-    );
+    updateUsersList();
     const room = rooms.values().find((r) => r.host === socket.id);
     if (room) {
       rooms.delete(room.id);
