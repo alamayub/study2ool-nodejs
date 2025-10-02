@@ -1,11 +1,14 @@
-const express = require("express");
-const http = require("http");
-const { v4: uuidv4 } = require("uuid");
+import express from "express";
+import http from "http";
+import { v4 as uuidv4 } from "uuid";
+import { Server } from "socket.io";
+import { generateAvatarURL, generateRoomAvatarURL } from "./utils/utils.js";
+
 const app = express();
 const server = http.createServer(app);
 
-// server.js
-const io = require("socket.io")(server, {
+// socket.io setup
+const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -34,13 +37,14 @@ io.on("connection", (socket) => {
 
   // --- Register User ---
   socket.on("register", ({ uid, displayName }) => {
-    users.set(socket.id, { uid, displayName });
-    console.log("Registered users:", [...users.values()]);
+    const photoURL = generateAvatarURL(uid);
+    users.set(socket.id, { uid, photoURL, displayName });
     // Broadcast updated users to all clients
     io.emit(
       "users-list",
       [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
     );
+    sendLatestRoomsList();
   });
 
   // --- Call Offer ---
@@ -79,9 +83,11 @@ io.on("connection", (socket) => {
     const id = uuidv4();
     const now = new Date().toISOString();
     const host = socket.id; 
+    const photoURL = generateRoomAvatarURL(name);
 
     const map = {
       id,
+      photoURL,
       name: name || `Room ${id}`,
       description: description || "This is room description!",
       host,
@@ -113,10 +119,19 @@ io.on("connection", (socket) => {
     rooms.set(roomId, cls);
     socket.join(roomId);
     const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
-    const message = `${user.displayName} has joined the room!` ;
-    io.to(roomId).emit("user-joined", { user: user, roomId, message });
+    const message = `${user.displayName} has joined the room!`;
+    const room = rooms.get(roomId);
+    const map = {
+      ...room,
+      host: users.get(room.host) || { uid: room.host, displayName: "Unknown" },
+      users: room.users.map(
+        (uid) => users.get(uid) || { uid, displayName: "Unknown" }
+      ),
+    };
+    io.to(roomId).emit("user-joined", { user: user, roomId, message, room: map });
+    socket.emit("room-joined", { room: map });
     socket.emit('all-message', { roomId, messages: rooms.get(roomId).messages });
-    emitroomsList();
+    sendLatestRoomsList();
   });
 
   // --- Leave room ---
@@ -132,7 +147,7 @@ io.on("connection", (socket) => {
     const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
     const message = `${user.displayName} has joined the room!` ;
     o.to(roomId).emit("user-left", { user: user, roomId, message });
-    emitroomsList();
+    sendLatestRoomsList();
   });
 
   // --- Leave room ---
@@ -145,8 +160,8 @@ io.on("connection", (socket) => {
     }
     socket.leave(roomId);
     rooms.delete(roomId);
-    socket.emit("room-closed", { message: "room closed by the owner!" });
-    emitroomsList();
+    socket.emit("room-closed", { roomId, message: "room closed by the owner!" });
+    sendLatestRoomsList();
   });
 
   // --- send message ---

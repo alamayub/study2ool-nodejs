@@ -3,6 +3,7 @@
   "name": "classroom",
   "description": "Simple WebRTC classroom app with teacher and students",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
