@@ -40,7 +40,7 @@ function updateUsersList() {
 }
 
 io.on("connection", (socket) => {
-  console.log(`User connected: ${socket.id}`);
+  console.log(`User connected: ${socket.id} `);
 
   // --- Register User ---
   socket.on("register", ({ uid, displayName }) => {
