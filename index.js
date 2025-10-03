@@ -17,23 +17,7 @@ const io = new Server(server, {
 const users = new Map();
 const rooms = new Map();
 
-function sendLatestRoomsList() {
-  const enrichedrooms = Array.from(rooms.values()).map((cls) => ({
-    ...cls,
-    host: users.get(cls.host) || { uid: cls.host, displayName: "Unknown" },
-    users: cls.users.map(
-      (uid) => users.get(uid) || { uid, displayName: "Unknown" }
-    ),
-  }));
-  io.emit("rooms-list", enrichedrooms);
-}
-
-function updateUsersList() {
-  const activeUsers = Array.from(users.values());
-  io.emit("users-list", activeUsers);
-}
-
-registerSocketHandlers(io, users, rooms, sendLatestRoomsList, updateUsersList);
+registerSocketHandlers(io, users, rooms);
 
 // --- Start server ---
 const PORT = process.env.PORT || 4000;

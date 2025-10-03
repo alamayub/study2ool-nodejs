@@ -12,7 +12,7 @@ export default function messageHandlers(io, socket, users, rooms) {
     const msg = {
       id: Date.now(),
       type: "text",
-      sender: user,
+      sender: user.uid,
       message,
       timestamp: now,
     };
