@@ -9,6 +9,7 @@ export default function messageHandlers(io, socket, users, rooms) {
     const now = new Date().toISOString();
     const msg = {
       id: Date.now(),
+
       sender: users.get(socket.id) || { uid: socket.id, displayName: "Unknown" },
       message,
       timestamp: now,
@@ -133,3 +134,4 @@ export default function messageHandlers(io, socket, users, rooms) {
     });
   });
 }
+
