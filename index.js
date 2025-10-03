@@ -14,7 +14,6 @@ const io = new Server(server, {
   },
 });
 
-// Map to store users: socketId -> { uid, displayName }
 const users = new Map();
 const rooms = new Map();
 
@@ -26,15 +25,12 @@ function sendLatestRoomsList() {
       (uid) => users.get(uid) || { uid, displayName: "Unknown" }
     ),
   }));
-
   io.emit("rooms-list", enrichedrooms);
 }
 
 function updateUsersList() {
-  io.emit(
-    "users-list",
-    [...users.entries()].map(([socketId, user]) => ({ socketId, ...user }))
-  );
+  const activeUsers = Array.from(users.values());
+  io.emit("users-list", activeUsers);
 }
 
 registerSocketHandlers(io, users, rooms, sendLatestRoomsList, updateUsersList);

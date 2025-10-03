@@ -6,44 +6,45 @@ export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsLi
   socket.on("create-room", ({ name, description }) => {
     const id = uuidv4();
     const now = new Date().toISOString();
-    const host = socket.id; 
-    const photoURL = generateRoomAvatarURL(name);
+    const host = Array.from(users.values()).find(u => u.socketId === socket.id);
+    if(host) {
+      const photoURL = generateRoomAvatarURL(name);
+      const map = {
+        id,
+        photoURL,
+        name: name || `Room ${id}`,
+        description: description || "This is room description!",
+        host: host.uid,
+        createdDate: now,
+        lastMessage: null,
+        lastModified: now,
+        messages: [],
+        users: [host.uid],
+      };
 
-    const map = {
-      id,
-      photoURL,
-      name: name || `Room ${id}`,
-      description: description || "This is room description!",
-      host,
-      createdDate: now,
-      lastMessage: null,
-      lastModified: now,
-      messages: [],
-      users: [host],
-    };
-
-    rooms.set(id, map);
-    socket.join(id);
-    sendLatestRoomsList();
+      rooms.set(id, map);
+      socket.join(id);
+      sendLatestRoomsList();
+    } else {
+      socket.emit("error", { message: "User not found!" });
+    }
   });
 
   // --- Join room ---
   socket.on("join-room", ({ roomId }) => {
     const cls = rooms.get(roomId);
-    if (!cls) {
-      socket.emit("error", { message: "room not found" });
-      return;
-    }
+    if (!cls) return socket.emit("error", { message: "Room not found!" });
 
-    if (!cls.users.includes(socket.id)) {
-      cls.users.push(socket.id);
+    const user = Array.from(users.values()).find(u => u.socketId === socket.id);
+    if(!user) return socket.emit("error", { message: "User not found!" });
+
+    if (!cls.users.includes(user.uid)) {
+      cls.users.push(user.uid);
       cls.lastModified = new Date().toISOString();
     }
 
     rooms.set(roomId, cls);
     socket.join(roomId);
-    const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
-    const message = `${user.displayName} has joined the room!`;
     const room = rooms.get(roomId);
     const map = {
       ...room,
@@ -52,35 +53,64 @@ export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsLi
         (uid) => users.get(uid) || { uid, displayName: "Unknown" }
       ),
     };
-    io.to(roomId).emit("user-joined", { user: user, roomId, message, room: map });
     socket.emit("room-joined", { room: map });
-    socket.emit('all-message', { roomId, messages: rooms.get(roomId).messages });
+    sendLatestRoomsList();
+  });
+
+  // --- view room ---
+  socket.on("view-room", ({ roomId }) => {
+    const cls = rooms.get(roomId);
+    if (!cls) return socket.emit("error", { message: "Room not found!" });
+
+    const user = Array.from(users.values()).find(u => u.socketId === socket.id);
+    if(!user) return socket.emit("error", { message: "User not found!" });
+
+    if (!cls.users.includes(user.uid)) {
+      return socket.emit("error", { message: "You are not in this room!" });
+    }
+
+    const room = rooms.get(roomId);
+    const map = {
+      ...room,
+      host: users.get(room.host) || { uid: room.host, displayName: "Unknown" },
+      users: room.users.map(
+        (uid) => users.get(uid) || { uid, displayName: "Unknown" }
+      ),
+    };
+    socket.emit("room-info", { room: map });
     sendLatestRoomsList();
   });
 
   // --- Leave room ---
   socket.on("leave-room", ({ roomId }) => {
     const cls = rooms.get(roomId);
-    if (!cls) return;
+    if (!cls) return socket.emit("error", { message: "Room not found!" });
+    
+    const user = Array.from(users.values()).find(u => u.socketId === socket.id);
+    if(!user) return socket.emit("error", { message: "User not found!" });
 
-    cls.users = cls.users.filter((u) => u !== socket.id);
+    if (!cls.users.includes(user.uid)) {
+      return socket.emit("error", { message: "You are not in this room!" });
+    }
+
+    cls.users = cls.users.filter((u) => u !== user.uid);
     cls.lastModified = new Date().toISOString();
 
     rooms.set(roomId, cls);
     socket.leave(roomId);
-    const user = users.get(socket.id) || { uid: socket.id, displayName: "Unknown" };
-    const message = `${user.displayName} has joined the room!` ;
-    o.to(roomId).emit("user-left", { user: user, roomId, message });
     sendLatestRoomsList();
   });
 
   // --- Leave room ---
   socket.on("close-room", ({ roomId }) => {
     const room = rooms.get(roomId);
-    if(!room) return;
-    if(room.host !== socket.id) {
-      socket.emit("error", { message: "only host can close the room!" });
-      return;
+    if(!room) return socket.emit("error", { message: "Room not found!" });
+
+    const user = Array.from(users.values()).find(u => u.socketId === socket.id);
+    if(!user) return socket.emit("error", { message: "User not found!" });
+
+    if(room.host !== user.uid) {
+      return socket.emit("error", { message: "Only host can close the room!" });
     }
     socket.leave(roomId);
     rooms.delete(roomId);
