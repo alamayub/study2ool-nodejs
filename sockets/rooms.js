@@ -1,33 +1,31 @@
 import { v4 as uuidv4 } from "uuid";
 import { generateRoomAvatarURL } from "../utils/utils.js";
 
-export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsList) {
+export default function roomHandlers(io, socket, users, rooms) {
   // --- create room ---
   socket.on("create-room", ({ name, description }) => {
     const id = uuidv4();
     const now = new Date().toISOString();
     const host = Array.from(users.values()).find(u => u.socketId === socket.id);
-    if(host) {
-      const photoURL = generateRoomAvatarURL(name);
-      const map = {
-        id,
-        photoURL,
-        name: name || `Room ${id}`,
-        description: description || "This is room description!",
-        host: host.uid,
-        createdDate: now,
-        lastMessage: null,
-        lastModified: now,
-        messages: [],
-        users: [host.uid],
-      };
+    if(!host) return socket.emit("error", { message: "User not found!" });
 
-      rooms.set(id, map);
-      socket.join(id);
-      sendLatestRoomsList();
-    } else {
-      socket.emit("error", { message: "User not found!" });
-    }
+    const photoURL = generateRoomAvatarURL(name);
+    const map = {
+      id,
+      photoURL,
+      name: name || `Room ${id}`,
+      description: description || "This is room description!",
+      host: host.uid,
+      createdDate: now,
+      lastMessage: null,
+      lastModified: now,
+      messages: [],
+      users: [host.uid],
+    };
+
+    rooms.set(id, map);
+    socket.join(id);
+    io.emit("room-created", { room: map, message: `Room ${map.name} created sucessfully!` });
   });
 
   // --- Join room ---
@@ -45,43 +43,10 @@ export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsLi
 
     rooms.set(roomId, cls);
     socket.join(roomId);
-    const room = rooms.get(roomId);
-    const map = {
-      ...room,
-      host: users.get(room.host) || { uid: room.host, displayName: "Unknown" },
-      users: room.users.map(
-        (uid) => users.get(uid) || { uid, displayName: "Unknown" }
-      ),
-    };
-    socket.emit("room-joined", { room: map });
-    sendLatestRoomsList();
+    io.to(roomId).emit("room-joined", { uid: user.uid, roomId});
   });
 
-  // --- view room ---
-  socket.on("view-room", ({ roomId }) => {
-    const cls = rooms.get(roomId);
-    if (!cls) return socket.emit("error", { message: "Room not found!" });
-
-    const user = Array.from(users.values()).find(u => u.socketId === socket.id);
-    if(!user) return socket.emit("error", { message: "User not found!" });
-
-    if (!cls.users.includes(user.uid)) {
-      return socket.emit("error", { message: "You are not in this room!" });
-    }
-
-    const room = rooms.get(roomId);
-    const map = {
-      ...room,
-      host: users.get(room.host) || { uid: room.host, displayName: "Unknown" },
-      users: room.users.map(
-        (uid) => users.get(uid) || { uid, displayName: "Unknown" }
-      ),
-    };
-    socket.emit("room-info", { room: map });
-    sendLatestRoomsList();
-  });
-
-  // --- Leave room ---
+  // --- Leave room ---w
   socket.on("leave-room", ({ roomId }) => {
     const cls = rooms.get(roomId);
     if (!cls) return socket.emit("error", { message: "Room not found!" });
@@ -97,8 +62,8 @@ export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsLi
     cls.lastModified = new Date().toISOString();
 
     rooms.set(roomId, cls);
+    io.to(roomId).emit("room-left", { roomId, uid: user.uid });
     socket.leave(roomId);
-    sendLatestRoomsList();
   });
 
   // --- Leave room ---
@@ -112,9 +77,8 @@ export default function roomHandlers(io, socket, users, rooms, sendLatestRoomsLi
     if(room.host !== user.uid) {
       return socket.emit("error", { message: "Only host can close the room!" });
     }
+    io.to(roomId).emit("room-closed", roomId);
     socket.leave(roomId);
     rooms.delete(roomId);
-    socket.emit("room-closed", { roomId, message: "room closed by the owner!" });
-    sendLatestRoomsList();
   });
 }
