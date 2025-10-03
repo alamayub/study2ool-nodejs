@@ -15,7 +15,14 @@ export default function registerSocketHandlers(io, users, rooms, sendLatestRooms
     // General user handling
     socket.on("register", ({ uid, displayName }) => {
       const photoURL = generateAvatarURL(uid);
-      users.set(socket.id, { uid, photoURL, displayName });
+      users.set(uid, { 
+        socketId: socket.id, 
+        uid, 
+        photoURL, 
+        displayName, 
+        status: "online",
+        timestamp: new Date().toISOString(),
+      });
       updateUsersList();
       sendLatestRoomsList();
     });
@@ -23,14 +30,20 @@ export default function registerSocketHandlers(io, users, rooms, sendLatestRooms
     // --- Disconnect ---
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);
-      users.delete(socket.id);
-      updateUsersList();
-      const room = rooms.values().find((r) => r.host === socket.id);
-      if (room) {
-        rooms.delete(room.id);
-        socket.leave(room.id);
-        socket.emit("room-diconnected", { message: "room disconnected by the owner!" });
-        sendLatestRoomsList();
+      const user = Array.from(users.values()).find(u => u.socketId === socket.id);
+      if (user) {
+        users.delete(user.uid);
+        user.status = "offline";
+        user.timestamp = new Date().toISOString();
+        users.set(user.uid, user);
+        updateUsersList();
+        // const room = rooms.values().find((r) => r.host === socket.id);
+        // if (room) {
+        //   rooms.delete(room.id);
+        //   socket.leave(room.id);
+        //   socket.emit("room-diconnected", { message: "room disconnected by the owner!" });
+        //   sendLatestRoomsList();
+        // }
       }
     });
   });
