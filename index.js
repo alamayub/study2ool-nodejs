@@ -16,8 +16,12 @@ const io = new Server(server, {
 
 const users = new Map();
 const rooms = new Map();
+const quizzesList = new Map();
+const quizzesQuestions = new Map();
+const quizzesUsers = new Map();
+const quizzesAnswers = new Map();
 
-registerSocketHandlers(io, users, rooms);
+registerSocketHandlers(io, users, rooms, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers);
 
 // --- Start server ---
 const PORT = process.env.PORT || 4000;
