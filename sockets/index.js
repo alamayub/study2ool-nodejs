@@ -1,16 +1,18 @@
 import { generateAvatarURL } from "../utils/utils.js";
 import callHandlers from "./calls.js";
 import messageHandlers from "./messages.js";
+import quizHandlers from "./quiz.js";
 import roomHandlers from "./rooms.js";
 
-export default function registerSocketHandlers(io, users, rooms ) {
+export default function registerSocketHandlers(io, users, rooms, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers) {
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
     // Register handlers by feature
     callHandlers(io, socket, users);
     messageHandlers(io, socket, users, rooms);
-    roomHandlers(io, socket, users, rooms, () => {});
+    roomHandlers(io, socket, users, rooms);
+    quizHandlers(io, socket, users, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers);
 
     // General user handling
     socket.on("register", ({ uid, displayName }) => {
@@ -29,6 +31,15 @@ export default function registerSocketHandlers(io, users, rooms ) {
       socket.broadcast.emit("user-joined", map); // everyone except me 
       const roomsList = Array.from(rooms.values());
       socket.emit("rooms-list", roomsList);
+      const quizzesArray = Array.from(quizzesList.entries()).map(
+        ([quizId, quizInfo]) => ({
+          quiz: quizInfo,
+          users: quizzesUsers.get(quizId) || [],
+          answers: quizzesAnswers.get(quizId) || [],
+          questions: quizzesQuestions.get(quizId) || [],
+        })
+      );
+      socket.emit("quizzes-list", quizzesArray);
     });
 
     // --- Disconnect ---
