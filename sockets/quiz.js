@@ -29,10 +29,9 @@ export default function quizHandlers(io, socket, users, quizzesList, quizzesQues
     socket.join(id);
     io.emit("quiz-created", { 
       quiz: map, 
-      users: [],
-      answers: [],
+      users: {},
+      answers: {},
       questions: questions,
-      message: `Quiz ${map.name} created sucessfully!` 
     });
   });
   // --- Start Quiz ---
