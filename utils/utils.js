@@ -5,3 +5,8 @@ export function generateAvatarURL(id) {
 export function generateRoomAvatarURL(name) {
   return `https://api.dicebear.com/7.x/bottts/svg?seed=${name}&backgroundColor=b6e3f4,c0aede,d1d4f9&backgroundType=gradientLinear`;
 }
+
+export const UserStatus = Object.freeze({
+  ONLINE: "online",
+  OFFLINE: "offline",
+});
