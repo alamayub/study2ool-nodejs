@@ -4,8 +4,9 @@ import callHandlers from "./calls.js";
 import messageHandlers from "./messages.js";
 import quizHandlers from "./quiz.js";
 import roomHandlers from "./rooms.js";
+import videoHandlers from "./video.js";
 
-export default function registerSocketHandlers(io, usersList, roomsList, roomsUsers, roomsMessages, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers) {
+export default function registerSocketHandlers(io, usersList, roomsList, roomsUsers, roomsMessages, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers, videosList) {
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
 
@@ -14,6 +15,7 @@ export default function registerSocketHandlers(io, usersList, roomsList, roomsUs
     messageHandlers(io, socket, usersList, roomsList, roomsMessages);
     roomHandlers(io, socket, usersList, roomsList, roomsUsers, roomsMessages);
     quizHandlers(io, socket, usersList, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers);
+    videoHandlers(io, socket, usersList, roomsList, videosList);
 
     // General user handling
     socket.on("register-user", async ({ uid, displayName }) => {

@@ -5,6 +5,7 @@ import registerSocketHandlers from "./sockets/index.js";
 import { initDB } from "./db/postgres.js";
 import { getAllUsers } from "./db/queries/users.js";
 import { getAllRooms } from "./db/queries/rooms.js";
+import { getAllVideos } from "./db/queries/videos.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -18,19 +19,18 @@ const io = new Server(server, {
 });
 
 await initDB();
-const users = await getAllUsers();
-const rooms = await getAllRooms();
-const usersList = users;
-const roomsList = rooms;
+const usersList = await getAllUsers();
+const roomsList = await getAllRooms();
 const roomsUsers = new Map();
 const roomsMessages = new Map();
 const quizzesList = new Map();
 const quizzesQuestions = new Map();
 const quizzesUsers = new Map();
 const quizzesAnswers = new Map();
+const videosList = await getAllVideos();
 
 
-registerSocketHandlers(io, usersList, roomsList, roomsUsers, roomsMessages, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers);
+registerSocketHandlers(io, usersList, roomsList, roomsUsers, roomsMessages, quizzesList, quizzesQuestions, quizzesUsers, quizzesAnswers, videosList);
 
 // --- Start server ---
 const PORT = process.env.PORT || 4000;

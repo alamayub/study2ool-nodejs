@@ -1,3 +1,16 @@
+-- YouTube
+CREATE TABLE IF NOT EXISTS youtube (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    author_name TEXT,
+    author_url TEXT,
+    type TEXT,
+    thumbnail_url TEXT,
+    html TEXT,
+    created_by TEXT,
+    created_at TEXT
+);
+
 -- Users
 CREATE TABLE IF NOT EXISTS users (
     uid TEXT PRIMARY KEY,
