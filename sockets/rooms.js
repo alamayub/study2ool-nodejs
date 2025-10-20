@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { generateRoomAvatarURL } from "../utils/utils.js";
-import { saveRoom } from "../db/queries/rooms.js";
+import { addRoomUser, saveRoom } from "../db/queries/rooms.js";
 
 export default function roomHandlers(io, socket, usersList, roomsList, roomsUsers, roomsMessages) {
   // --- create room ---
@@ -32,6 +32,7 @@ export default function roomHandlers(io, socket, usersList, roomsList, roomsUser
         }
       }
       await saveRoom(map);
+      await addRoomUser(id, uid, now);
       roomsList.set(id, map);
       roomsUsers.set(id, users);
       roomsMessages.set(id, {});

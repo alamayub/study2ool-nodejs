@@ -46,7 +46,7 @@ async function addRoomUser(roomId, userId, now) {
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (room_id, user_id) DO NOTHING;
     `;
-    await pool.query(query, [roomId, userId, now]);
+    await pool.query(query, [roomId, userId, now, now]);
   } catch (error) {
     console.error("❌ ERROR WHILE ADDING USER TO ROOM:", error.message);
     throw new Error("Failed to add user to room.");
